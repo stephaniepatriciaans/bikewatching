@@ -5,20 +5,23 @@ import * as d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm';
 mapboxgl.accessToken =
   'pk.eyJ1Ijoic3RlcGhhbmllcGF0cmljaWFhbnMiLCJhIjoiY21oejZkejg5MGppaDJsb2xzOXM2eWtzNiJ9.HawBs904Ln6jsR1KXKBeeQ';
 
+// ================================================================================================================
 // Base map
+// ================================================================================================================
 const map = new mapboxgl.Map({
   container: 'map',
   style: 'mapbox://styles/mapbox/streets-v12', 
   center: [-71.09415, 42.36027],
   zoom: 12,
-  minZoom: 5,
+  minZoom: 2,
   maxZoom: 18,
 });
 
+map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-// =====================================================================================================================
+// ================================================================================================================
 // Helper functions
-// =====================================================================================================================
+// ================================================================================================================
 
 // Compute arrivals/departures/total per station
 function computeStationTraffic(stations, trips) {
@@ -67,15 +70,15 @@ function formatTime(minutes) {
   return date.toLocaleString('en-US', { timeStyle: 'short' });
 }
 
-
-// =====================================================================================================================
+// ================================================================================================================
 // Main map logic
-// =====================================================================================================================
-
+// ================================================================================================================
 map.on('load', async () => {
   try {
 
+    // ----------------------------------------------------------
     // 1) Bike lanes
+    // ----------------------------------------------------------
     map.addSource('boston_route', {
       type: 'geojson',
       data: 'https://bostonopendata-boston.opendata.arcgis.com/datasets/boston::existing-bike-network-2022.geojson',
@@ -92,8 +95,9 @@ map.on('load', async () => {
       },
     });
 
-
+    // ----------------------------------------------------------
     // 2) Load station + trips data
+    // ----------------------------------------------------------
     const stationUrl =
       'https://dsc106.com/labs/lab07/data/bluebikes-stations.json';
     const stationJson = await d3.json(stationUrl);
@@ -120,8 +124,9 @@ map.on('load', async () => {
       return { x, y };
     }
 
-
+    // ----------------------------------------------------------
     // 3) Scales
+    // ----------------------------------------------------------
     const radiusScale = d3
       .scaleSqrt()
       .domain([0, d3.max(stations, (d) => d.totalTraffic) || 1])
@@ -131,8 +136,9 @@ map.on('load', async () => {
       .domain([0, 1])
       .range([0, 0.5, 1]); 
 
-
+    // ----------------------------------------------------------
     // 4) Circles
+    // ----------------------------------------------------------
     let circles = svg
       .selectAll('circle')
       .data(stations, (d) => d.short_name)
@@ -162,8 +168,9 @@ map.on('load', async () => {
     map.on('moveend', updatePositions);
     updatePositions();
 
-
+    // ----------------------------------------------------------
     // 5) Tooltip 
+    // ----------------------------------------------------------
     const tooltip = d3.select('#tooltip');
 
     function showTooltip(event, d) {
@@ -185,8 +192,9 @@ map.on('load', async () => {
       .on('mousemove', showTooltip)
       .on('mouseleave', hideTooltip);
 
-
-    // 6) Time slider + label 
+    // ----------------------------------------------------------
+    // 6) Time slider + label
+    // ----------------------------------------------------------
     const timeSlider = document.getElementById('time-slider');
     const selectedTime = document.getElementById('selected-time');
     const anyTimeLabel = document.getElementById('any-time');
@@ -210,7 +218,7 @@ map.on('load', async () => {
         d3.max(filteredStations, (d) => d.totalTraffic) || 1,
       ]);
 
-      // Update bound data but keep same circles
+      // Update bound data
       circles = circles.data(filteredStations, (d) => d.short_name);
 
       circles
@@ -242,8 +250,8 @@ map.on('load', async () => {
 
     timeSlider.addEventListener('input', updateTimeDisplay);
     updateTimeDisplay();
-
-  } catch (error) {
+  } 
+  catch (error) {
     console.error('Error loading data:', error);
   }
 });
