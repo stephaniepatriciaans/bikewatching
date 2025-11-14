@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Bikewatching</title>
+
+    <!-- Mapbox CSS -->
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.5.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+
+    <!-- Global CSS -->
+    <link rel="stylesheet" href="global.css" />
+
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="./assets/favicon.svg"
+    />
+  </head>
+  <body>
+    <header>
+      <h1>Boston Bluebikes Traffic</h1>
+      <p>DSC 106 – Lab 7: Geospatial Visualizations</p>
+    </header>
+
+    <main>
+      <div id="map">
+        <!-- SVG overlay for D3 circles -->
+        <svg></svg>
+      </div>
+
+      <!-- Time filter UI -->
+      <section class="time-filter">
+        <label>
+          Time of day:
+          <input
+            id="time-slider"
+            type="range"
+            min="-1"
+            max="1439"
+            step="5"
+            value="-1"
+          />
+        </label>
+        <div class="time-display">
+          <span>Showing rides at: </span>
+          <time id="selected-time"></time>
+          <em id="any-time">(any time)</em>
+        </div>
+      </section>
+
+      <!-- Tooltip -->
+      <div id="tooltip" class="tooltip" hidden></div>
+
+      <!-- Legend -->
+      <div class="legend">
+        <div style="--departure-ratio: 1">More departures</div>
+        <div style="--departure-ratio: 0.5">Balanced</div>
+        <div style="--departure-ratio: 0">More arrivals</div>
+      </div>
+    </main>
+
+    <script src="map.js" type="module"></script>
+  </body>
+</html>
