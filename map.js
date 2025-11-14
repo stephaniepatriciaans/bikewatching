@@ -132,9 +132,20 @@ map.on('load', async () => {
       .domain([0, d3.max(stations, (d) => d.totalTraffic) || 1])
       .range([0, 25]);
 
-    const stationFlow = d3.scaleQuantize()
+      const stationFlow = d3.scaleQuantize()
       .domain([0, 1])
-      .range([0, 0.5, 1]); 
+      .range([0, 0.5, 1]);
+
+    // Color: 0 = more arrivals, 0.5 = balanced, 1 = more departures
+    const colorScale = d3.scaleOrdinal()
+      .domain([0, 0.5, 1])
+      .range(['#3b82f6', '#a855f7', '#FF0000']);
+
+    function stationColor(d) {
+      const ratio = d.totalTraffic ? d.departures / d.totalTraffic : 0.5;
+      const bucket = stationFlow(ratio); 
+      return colorScale(bucket);
+    }
 
     // ----------------------------------------------------------
     // 4) Circles
@@ -145,7 +156,7 @@ map.on('load', async () => {
       .join('circle')
       .attr('stroke', 'white')
       .attr('stroke-width', 1)
-      .attr('fill', 'steelblue')
+      .attr('fill', stationColor)
       .attr('opacity', 0.6)
       .attr('r', (d) => radiusScale(d.totalTraffic))
       .style(
@@ -223,6 +234,7 @@ map.on('load', async () => {
 
       circles
         .attr('r', (d) => radiusScale(d.totalTraffic))
+        .attr('fill', stationColor)
         .style(
           '--departure-ratio',
           (d) =>
