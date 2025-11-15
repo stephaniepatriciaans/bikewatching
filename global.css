@@ -1,11 +1,14 @@
 :root {
-    --bg: #0b1120;
-    --fg: #e5e7eb;
-    --accent: #38bdf8;
-    --muted: #9ca3af;
-    --card: #020617;
-    --border: #1f2933;
+  --bg: #0b1120;
+  --fg: #e5e7eb;
+  --accent: #38bdf8;
+  --muted: #9ca3af;
+  --card: #020617;
+  --border: #1f2933;
+  --color-departures: #3b82f6; 
+  --color-arrivals:   #ef4444;
   }
+
   
   *,
   *::before,
@@ -135,18 +138,30 @@
     flex: 1;
     text-align: center;
     padding: 0.4rem 0.5rem;
-    border-radius: 0.5rem;
-    color: #020617;
+    border-radius: 999px;
     font-size: 0.8rem;
-    background: #e5e7eb;
+    color: var(--card);
+    --departure-ratio: 0.5;
+    --color: color-mix(
+      in oklch,
+      var(--color-departures) calc(100% * var(--departure-ratio)),
+      var(--color-arrivals)
+    );
+    background: var(--color);
   }
+  
   
   /* Station circles */
   #map circle {
     stroke: white;
     stroke-width: 1.5;
-    fill: #7816f9;              
-    fill-opacity: 0.8;
-    pointer-events: visiblePainted;  
+    pointer-events: auto; 
+    --color: color-mix(
+      in oklch,
+      var(--color-departures) calc(100% * var(--departure-ratio)),
+      var(--color-arrivals)
+    );
+    fill: var(--color);
+    fill-opacity: 0.85;
   }
   

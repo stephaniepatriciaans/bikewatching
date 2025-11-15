@@ -27,17 +27,17 @@ map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 function computeStationTraffic(stations, trips) {
   const departures = d3.rollup(
     trips,
-    (v) => v.length,
-    (d) => d.start_station_id
+    v => v.length,
+    d => d.start_station_id
   );
 
   const arrivals = d3.rollup(
     trips,
-    (v) => v.length,
-    (d) => d.end_station_id
+    v => v.length,
+    d => d.end_station_id
   );
 
-  return stations.map((station) => {
+  return stations.map(station => {
     const id = station.short_name;
     const dep = departures.get(id) ?? 0;
     const arr = arrivals.get(id) ?? 0;
@@ -55,7 +55,7 @@ function minutesSinceMidnight(date) {
 function filterTripsByTime(trips, timeFilter) {
   if (timeFilter === -1) return trips;
 
-  return trips.filter((trip) => {
+  return trips.filter(trip => {
     const startedMinutes = minutesSinceMidnight(trip.started_at);
     const endedMinutes = minutesSinceMidnight(trip.ended_at);
     return (
@@ -75,7 +75,6 @@ function formatTime(minutes) {
 // ================================================================================================================
 map.on('load', async () => {
   try {
-
     // ----------------------------------------------------------
     // 1) Bike lanes
     // ----------------------------------------------------------
@@ -105,7 +104,7 @@ map.on('load', async () => {
 
     let trips = await d3.csv(
       'https://dsc106.com/labs/lab07/data/bluebikes-traffic-2024-03.csv',
-      (trip) => {
+      trip => {
         trip.started_at = new Date(trip.started_at);
         trip.ended_at = new Date(trip.ended_at);
         return trip;
@@ -114,7 +113,18 @@ map.on('load', async () => {
 
     let stations = computeStationTraffic(baseStations, trips);
 
-    const svg = d3.select('#map').select('svg');
+    // SVG overlay on top of Mapbox canvas
+    const container = map.getCanvasContainer();
+    const svg = d3
+      .select(container)
+      .append('svg')
+      .attr('class', 'station-overlay')
+      .style('position', 'absolute')
+      .style('top', 0)
+      .style('left', 0)
+      .style('width', '100%')
+      .style('height', '100%')
+      .style('pointer-events', 'none');
 
     function getCoords(station) {
       const lng = +station.lon;
@@ -130,21 +140,25 @@ map.on('load', async () => {
     const radiusScale = d3
       .scaleSqrt()
       .domain([0, d3.max(stations, (d) => d.totalTraffic) || 1])
-      .range([0, 25]);
+      .range([1.5, 15]); 
 
-      const stationFlow = d3.scaleQuantize()
-      .domain([0, 1])
-      .range([0, 0.5, 1]);
+    // Bucket: 0 = more arrivals, 0.5 = balanced, 1 = more departures
+    function stationBucket(d) {
+      if (!d.totalTraffic) return 0.5;
+      const ratio = d.departures / d.totalTraffic;
 
-    // Color: 0 = more arrivals, 0.5 = balanced, 1 = more departures
-    const colorScale = d3.scaleOrdinal()
+      if (ratio > 0.55) return 1;   // clearly more departures
+      if (ratio < 0.45) return 0;   // clearly more arrivals
+      return 0.5;                   // otherwise balanced
+    }
+
+    const colorScale = d3
+      .scaleOrdinal()
       .domain([0, 0.5, 1])
-      .range(['#3b82f6', '#a855f7', '#FF0000']);
+      .range(['#3b82f6', '#a855f7', '#ff0000']); // blue, purple, red
 
     function stationColor(d) {
-      const ratio = d.totalTraffic ? d.departures / d.totalTraffic : 0.5;
-      const bucket = stationFlow(ratio); 
-      return colorScale(bucket);
+      return colorScale(stationBucket(d));
     }
 
     // ----------------------------------------------------------
@@ -152,25 +166,20 @@ map.on('load', async () => {
     // ----------------------------------------------------------
     let circles = svg
       .selectAll('circle')
-      .data(stations, (d) => d.short_name)
+      .data(stations, d => d.short_name)
       .join('circle')
       .attr('stroke', 'white')
       .attr('stroke-width', 1)
       .attr('fill', stationColor)
       .attr('opacity', 0.6)
-      .attr('r', (d) => radiusScale(d.totalTraffic))
-      .style(
-        '--departure-ratio',
-        (d) =>
-          stationFlow(
-            d.totalTraffic ? d.departures / d.totalTraffic : 0.5
-          )
-      );
+      .attr('r', d => radiusScale(d.totalTraffic))
+      .style('pointer-events', 'auto')
+      .style('--departure-ratio', d => stationBucket(d));
 
     function updatePositions() {
       circles
-        .attr('cx', (d) => getCoords(d).x)
-        .attr('cy', (d) => getCoords(d).y);
+        .attr('cx', d => getCoords(d).x)
+        .attr('cy', d => getCoords(d).y);
     }
 
     map.on('move', updatePositions);
@@ -180,7 +189,7 @@ map.on('load', async () => {
     updatePositions();
 
     // ----------------------------------------------------------
-    // 5) Tooltip 
+    // 5) Tooltip
     // ----------------------------------------------------------
     const tooltip = d3.select('#tooltip');
 
@@ -217,31 +226,38 @@ map.on('load', async () => {
         filteredTrips
       );
 
+      // Update global stations reference
+      stations = filteredStations;
+
       // Update radius scale range
       if (timeFilter === -1) {
-        radiusScale.range([0, 25]);
-      } else {
-        radiusScale.range([3, 50]);
-      }
+  // all-day view → small circles
+  radiusScale.range([1.5, 15]);
+} else {
+  // filtered-by-time view → still smaller
+  radiusScale.range([3, 20]);
+}
 
       radiusScale.domain([
         0,
-        d3.max(filteredStations, (d) => d.totalTraffic) || 1,
+        d3.max(filteredStations, d => d.totalTraffic) || 1,
       ]);
 
-      // Update bound data
-      circles = circles.data(filteredStations, (d) => d.short_name);
-
-      circles
-        .attr('r', (d) => radiusScale(d.totalTraffic))
+      // Re-bind data
+      circles = svg
+        .selectAll('circle')
+        .data(filteredStations, d => d.short_name)
+        .join('circle')
+        .attr('stroke', 'white')
+        .attr('stroke-width', 1)
+        .attr('opacity', 0.6)
+        .attr('r', d => radiusScale(d.totalTraffic))
         .attr('fill', stationColor)
-        .style(
-          '--departure-ratio',
-          (d) =>
-            stationFlow(
-              d.totalTraffic ? d.departures / d.totalTraffic : 0.5
-            )
-        );
+        .style('pointer-events', 'auto')
+        .style('--departure-ratio', d => stationBucket(d))
+        .on('mouseenter', showTooltip)
+        .on('mousemove', showTooltip)
+        .on('mouseleave', hideTooltip);
 
       updatePositions();
     }
@@ -262,8 +278,7 @@ map.on('load', async () => {
 
     timeSlider.addEventListener('input', updateTimeDisplay);
     updateTimeDisplay();
-  } 
-  catch (error) {
+  } catch (error) {
     console.error('Error loading data:', error);
   }
 });
